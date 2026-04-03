@@ -305,6 +305,125 @@ async def generate_questions_for_image(
     return SYMPTOM_QUESTIONS.get(scan_type, SYMPTOM_QUESTIONS["oral"])
 
 
+_PDF_NARRATIVE_PROMPT = """\
+You are a compassionate medical AI writing a personalised health screening report for a rural Indian patient.
+The report must be clear, warm, and never use frightening medical jargon.
+
+PATIENT DATA:
+- Scan type: {scan_type}
+- AI risk result: {risk_level} (confidence {confidence}%)
+- Patient symptoms:
+{symptoms_text}
+- Gemini visual finding: {gemini_finding}
+
+TASK: Generate a detailed, personalised narrative for this specific patient's PDF report.
+Every field must feel personal — mention their specific symptoms and what the AI actually saw.
+
+Respond ONLY in this exact JSON (no markdown):
+{{
+    "summary_en": "3-4 sentences. Start 'Your screening result shows...'. Describe what the AI found in this specific scan, connect it naturally to the symptoms the patient reported. Mention the confidence level naturally. End with one calm, clear action step. No medical jargon.",
+    "summary_hi": "3-4 वाक्य। शुरुआत 'आपकी जांच का परिणाम...' से। उनके लक्षणों का जिक्र करें। सरल भाषा।",
+    "summary_ta": "3-4 வாக்கியங்கள். 'உங்கள் பரிசோதனை முடிவு...' என தொடங்கவும். அவர்களின் அறிகுறிகளை இயற்கையாக குறிப்பிடவும்.",
+    "summary_te": "3-4 వాక్యాలు. 'మీ స్క్రీనింగ్ ఫలితం...' తో ప్రారంభించండి. వారి లక్షణాలను సహజంగా పేర్కొనండి.",
+    "next_steps": [
+        "Step 1 in plain English — specific and actionable (e.g., 'Visit your nearest PHC or community health centre within the next 2 days')",
+        "Step 2 — something they can do at home (e.g., 'Take clear photos of the area every 3 days to track any changes')",
+        "Step 3 — general health advice relevant to this scan type"
+    ],
+    "tell_doctor": [
+        "Key point 1 to tell the doctor — based on the specific symptoms reported",
+        "Key point 2 — duration and progression details",
+        "Key point 3 — any lifestyle factor relevant to this scan type (tobacco, sun, diet)"
+    ],
+    "lifestyle_tip": "One specific, practical lifestyle tip for this patient based on their scan type and symptoms. For oral: mention tobacco, betel nut, diet. For skin: mention sun protection, moisturising. Keep it warm and non-judgmental.",
+    "urgency": "URGENT" | "SOON" | "ROUTINE"
+}}
+
+Rules:
+- urgency: URGENT if HIGH_RISK, SOON if HIGH_RISK with short duration, ROUTINE if LOW_RISK
+- HIGH_RISK: next_steps[0] must say visit doctor within 2 days
+- LOW_RISK: next_steps can say monthly self-check
+- NEVER say: cancer, tumor, malignant, lesion, carcinoma, biopsy, oncology
+- Use: area, spot, patch, mark, change, finding, concern
+- Make tell_doctor specific to the symptoms actually reported, not generic
+"""
+
+async def generate_pdf_narrative(
+    scan_type: str,
+    risk_level: str,
+    confidence: float,
+    symptoms: dict | None,
+    gemini_finding: str,
+) -> dict:
+    """Generate rich, personalised narrative for the PDF report using Gemini.
+    Returns dict with summary_en/hi/ta/te, next_steps, tell_doctor, lifestyle_tip, urgency."""
+    symptoms_text = _format_symptoms(symptoms, scan_type)
+    prompt = _PDF_NARRATIVE_PROMPT.format(
+        scan_type=scan_type,
+        risk_level=risk_level,
+        confidence=round(confidence * 100),
+        symptoms_text=symptoms_text,
+        gemini_finding=gemini_finding[:300] if gemini_finding else "Not available",
+    )
+    try:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=[prompt],
+        )
+        result = _extract_json(response.text)
+        # Ensure required fields
+        if "next_steps" not in result or not result["next_steps"]:
+            result["next_steps"] = [
+                "Visit your nearest health centre as soon as possible.",
+                "Show this report to the doctor along with the photo.",
+                "Do not use any home remedies on the affected area.",
+            ]
+        if "tell_doctor" not in result or not result["tell_doctor"]:
+            result["tell_doctor"] = [
+                "How long you have had this problem.",
+                "Any pain or discomfort you feel.",
+                "Any changes you have noticed over time.",
+            ]
+        if "urgency" not in result:
+            result["urgency"] = "URGENT" if risk_level == "HIGH_RISK" else "ROUTINE"
+        if "lifestyle_tip" not in result:
+            result["lifestyle_tip"] = (
+                "Avoid tobacco and betel nut products, and maintain good oral hygiene."
+                if scan_type == "oral"
+                else "Apply sunscreen daily and wear protective clothing when outdoors."
+            )
+        logger.info("PDF narrative generated: scan=%s risk=%s urgency=%s",
+                    scan_type, risk_level, result.get("urgency"))
+        return result
+    except Exception as exc:
+        logger.error("PDF narrative generation failed: %s", exc)
+        return {
+            "summary_en": (
+                "Your screening result shows some areas that need attention. "
+                "The AI model has analysed your image. Please visit a doctor for a proper evaluation."
+            ),
+            "summary_hi": "आपकी जांच के परिणाम में कुछ बातें ध्यान देने योग्य हैं। कृपया डॉक्टर से मिलें।",
+            "summary_ta": "உங்கள் பரிசோதனை முடிவு சில பகுதிகளில் கவனிக்க வேண்டியவை உள்ளன. மருத்துவரை அணுகவும்.",
+            "summary_te": "మీ స్క్రీనింగ్ ఫలితం కొన్ని ప్రాంతాలలో శ్రద్ధ అవసరమని చూపిస్తోంది. వైద్యుడిని సంప్రదించండి.",
+            "next_steps": [
+                "Visit your nearest health centre as soon as possible.",
+                "Bring this report and your phone to show the photo to the doctor.",
+                "Do not apply any home remedies to the affected area.",
+            ],
+            "tell_doctor": [
+                "How long you have had this problem.",
+                "Whether there is any pain, burning, or itching.",
+                "Whether it has changed in size or colour.",
+            ],
+            "lifestyle_tip": (
+                "Avoid tobacco and betel nut products and maintain good oral hygiene."
+                if scan_type == "oral"
+                else "Apply sunscreen daily and protect your skin from excessive sun exposure."
+            ),
+            "urgency": "URGENT" if risk_level == "HIGH_RISK" else "ROUTINE",
+        }
+
+
 async def chat_health(
     message: str,
     history: list[dict],
