@@ -9,6 +9,11 @@ from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+# Note: sha256_crypt is used here instead of bcrypt because bcrypt 5.x has
+# a known incompatibility with passlib 1.7.4. sha256_crypt is secure and
+# works reliably across all versions.
+
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
