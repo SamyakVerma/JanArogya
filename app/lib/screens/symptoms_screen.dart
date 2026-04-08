@@ -228,7 +228,7 @@ class _QuestionCardState extends State<_QuestionCard> {
             spacing: 8,
             runSpacing: 8,
             children: _options.map((opt) {
-              final active = widget.selected == opt;
+              final active = widget.selected == _toEnglish(opt);
               return GestureDetector(
                 onTap: () => widget.onSelected(_toEnglish(opt)),
                 child: AnimatedContainer(

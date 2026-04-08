@@ -10,7 +10,13 @@ from datetime import datetime
 
 from config.disclaimers import check_for_banned_words
 from services.firebase_service import save_screening, upload_pdf
-from services.gemini_service import SYMPTOM_QUESTIONS, analyze_image_with_gemini, check_image_quality
+from services.gemini_service import (
+    DISCLAIMER,
+    SYMPTOM_QUESTIONS,
+    analyze_image_with_gemini,
+    check_image_quality,
+    generate_pdf_narrative,
+)
 from services.maps_service import get_maps_link
 from services.ml_service import run_inference
 from services.pdf_service import generate_report
@@ -124,7 +130,24 @@ async def _deliver_pdf(sender: str) -> None:
     tmp_path   = f"/tmp/report_{phone_hash[:8]}.pdf"
 
     try:
-        pdf_bytes = generate_report(report_data)
+        # Generate Gemini narrative for the PDF
+        narrative = await generate_pdf_narrative(
+            scan_type=report_data["scan_type"],
+            risk_level=report_data["risk_level"],
+            confidence=report_data["confidence"],
+            symptoms=report_data.get("symptoms"),
+            gemini_finding=report_data.get("explanation_en", ""),
+        )
+        pdf_data = {
+            **report_data,
+            "report_id":       f"WA-{report_data['phone_hash'][:8].upper()}",
+            "user_name":       "WhatsApp User",
+            "phone_masked":    "XXXXXXXXXX",
+            "explanation_local": report_data.get("explanation_hi", ""),
+            **narrative,
+        }
+
+        pdf_bytes = generate_report(pdf_data)
         with open(tmp_path, "wb") as f:
             f.write(pdf_bytes)
 
@@ -139,8 +162,8 @@ async def _deliver_pdf(sender: str) -> None:
             phone=sender,
             risk_level=report_data["risk_level"],
             confidence=report_data["confidence"],
-            hindi_message=report_data["hindi_message"],
-            english_message=report_data["english_message"],
+            hindi_message=report_data.get("explanation_hi", ""),
+            english_message=report_data.get("explanation_en", ""),
         )
         if doc_id:
             pdf_url = await upload_pdf(pdf_bytes, sender, doc_id)
@@ -271,31 +294,32 @@ async def handle_image(sender: str, image_id: str) -> None:
     }
 
     # 6. Build WhatsApp reply
+    risk_emoji = "🔴" if risk_level == "HIGH_RISK" else "🟢" if risk_level == "LOW_RISK" else "⚠️"
     reply = (
-        f"{analysis['risk_emoji']} *JanArogya स्क्रीनिंग रिपोर्ट*\n\n"
+        f"{risk_emoji} *JanArogya स्क्रीनिंग रिपोर्ट*\n\n"
         f"🧠 *AI Model:* {risk_level.replace('_', ' ')} ({round(confidence*100)}%)\n\n"
-        f"{analysis['hindi_message']}\n\n"
+        f"{analysis['hi']}\n\n"
         f"📍 *नजदीकी केंद्र:* {_DEFAULT_MAPS_LINK}\n\n"
-        f"_{analysis['disclaimer']}_"
+        f"_{DISCLAIMER['hi']}_"
     )
     check_for_banned_words(reply)
     await send_message(sender, reply)
 
     # 7. Store report + move to DONE
     phone_hash = hashlib.sha256(sender.encode()).hexdigest()
+    now = datetime.now()
     sess["report_data"] = {
-        "phone_hash":         phone_hash,
-        "scan_date":          datetime.now().strftime("%d %b %Y, %I:%M %p"),
-        "scan_type":          scan_type,
-        "risk_level":         risk_level,
-        "confidence":         confidence,
-        "hindi_message":      analysis["hindi_message"],
-        "english_message":    analysis["english_message"],
-        "action_urgency":     _urgency(risk_level, analysis.get("action_required", False)),
-        "centers":            [nearest_center],
-        "disclaimer_hindi":   "यह एक AI स्क्रीनिंग है, डॉक्टर से मिलें।",
-        "disclaimer_english": "This is an AI screening tool, not a medical diagnosis.",
-        "symptoms":           symptoms,
+        "phone_hash":     phone_hash,
+        "scan_date":      now.strftime("%d/%m/%Y"),
+        "scan_time":      now.strftime("%I:%M %p"),
+        "scan_type":      scan_type,
+        "risk_level":     risk_level,
+        "confidence":     confidence,
+        "explanation_en": analysis["en"],
+        "explanation_hi": analysis["hi"],
+        "local_language": "hi",
+        "symptoms":       symptoms,
+        "centers":        [nearest_center],
     }
     sess["state"] = DONE
 

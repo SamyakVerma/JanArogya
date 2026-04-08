@@ -429,32 +429,38 @@ async def chat_health(
     history: list[dict],
     language: str = "en",
 ) -> dict:
-    """General health chat using Gemini. Returns {response, suggestions}.
+    """General health chat using Gemini. Returns {response, error}.
     history: list of {role: 'user'|'assistant', content: str}
     """
     lang_names = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu"}
     lang_name  = lang_names.get(language, "English")
     system     = _CHAT_SYSTEM.format(language=lang_name)
 
-    # Build conversation for Gemini
-    contents: list = [system]
-    for turn in history[-10:]:  # last 10 turns max
+    # Build properly structured Contents for the google-genai SDK.
+    # Roles must be "user" or "model" (not "assistant").
+    contents: list[types.Content] = []
+    for turn in history[-10:]:
         role    = turn.get("role", "user")
         content = turn.get("content", "")
-        prefix  = "Patient: " if role == "user" else "Assistant: "
-        contents.append(prefix + content)
-    contents.append(f"Patient: {message}")
-    contents.append("Assistant:")
+        if not content:
+            continue
+        gemini_role = "user" if role == "user" else "model"
+        contents.append(
+            types.Content(role=gemini_role, parts=[types.Part(text=content)])
+        )
+    contents.append(
+        types.Content(role="user", parts=[types.Part(text=message)])
+    )
 
     try:
         response = await _client.aio.models.generate_content(
             model=_MODEL,
             contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+            ),
         )
         reply = response.text.strip()
-        # Remove leading "Assistant:" if Gemini echoes it
-        if reply.startswith("Assistant:"):
-            reply = reply[len("Assistant:"):].strip()
         logger.info("Health chat: lang=%s tokens~=%d", language, len(reply.split()))
         return {"response": reply, "error": None}
     except Exception as exc:

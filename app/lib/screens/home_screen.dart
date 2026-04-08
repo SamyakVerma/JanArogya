@@ -6,6 +6,8 @@ import '../providers/app_provider.dart';
 import '../services/tts_service.dart';
 import '../theme/app_theme.dart';
 import 'chat_screen.dart';
+import 'history_screen.dart';
+import 'scan_entry_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -230,8 +232,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToTab(BuildContext context, int idx) {
-    // Navigation handled by BottomNavigationBar in MainShell
-    // Home cards are informational — user taps bottom nav to switch tabs
+    if (idx == 1) {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const ScanEntryScreen()));
+    } else if (idx == 2) {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const HistoryScreen()));
+    }
   }
 }
 

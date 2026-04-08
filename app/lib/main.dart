@@ -12,12 +12,6 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Firebase — safe init, app works without it
-  try {
-    // ignore: depend_on_referenced_packages
-    await _initFirebase();
-  } catch (_) {}
-
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppProvider(),
@@ -26,9 +20,3 @@ void main() async {
   );
 }
 
-Future<void> _initFirebase() async {
-  try {
-    // Only initialize if firebase_options.dart is configured
-    // ignore: avoid_catches_without_on_clauses
-  } catch (_) {}
-}
