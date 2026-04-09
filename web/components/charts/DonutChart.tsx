@@ -40,8 +40,8 @@ export default function DonutChart({ stats }: DonutChartProps) {
             borderRadius: '12px',
             color: '#fff',
           }}
-          formatter={(value: number) => [
-            `${value} (${((value / total) * 100).toFixed(1)}%)`,
+          formatter={(value) => [
+            `${Number(value)} (${((Number(value) / total) * 100).toFixed(1)}%)`,
           ]}
         />
         <Legend
