@@ -29,11 +29,11 @@ const navItems = [
 ];
 
 interface SidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
-export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export default function Sidebar({ activeTab = '', onTabChange }: SidebarProps) {
   const { user, logout, sidebarCollapsed, toggleSidebar } = useAppStore();
   const pathname = usePathname();
   const router = useRouter();
