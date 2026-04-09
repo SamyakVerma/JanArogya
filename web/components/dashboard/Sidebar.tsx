@@ -78,7 +78,7 @@ export default function Sidebar({ activeTab = '', onTabChange }: SidebarProps) {
                 if (item.external) {
                   router.push(item.href);
                 } else if (item.tab) {
-                  onTabChange(item.tab);
+                  onTabChange?.(item.tab);
                 }
               }}
               className={cn(
