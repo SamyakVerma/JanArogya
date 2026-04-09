@@ -6,7 +6,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'default' | 'outline';
 }
 
-export function Badge({ risk, variant = 'default', className, children, ...props }: BadgeProps) {
+export function Badge({ risk, variant: _variant = 'default', className, children, ...props }: BadgeProps) {
   const riskClasses = risk ? getRiskBgColor(risk) : '';
 
   return (
