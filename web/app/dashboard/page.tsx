@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Sidebar from '@/components/dashboard/Sidebar';
 import KPICard from '@/components/dashboard/KPICard';
 import ScansTable from '@/components/dashboard/ScansTable';
