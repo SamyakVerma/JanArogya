@@ -347,7 +347,7 @@ export default function SymptomQuestionnaire({ scanType, onChange }: Props) {
 
               <div className="bg-background-secondary rounded-xl p-3 border border-border">
                 <label className="text-xs font-medium text-muted block mb-1.5">
-                  Anything else you'd like the doctor to know?
+                  Anything else you&apos;d like the doctor to know?
                 </label>
                 <textarea
                   value={additionalNotes}
