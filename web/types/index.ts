@@ -189,12 +189,16 @@ export interface ServiceStatus {
 }
 
 export interface SystemHealth {
-  status: 'healthy' | 'degraded' | 'down';
-  uptime_seconds: number;
-  services: {
-    api: ServiceStatus;
-    gemini: ServiceStatus;
-    tflite: ServiceStatus;
+  status?: 'healthy' | 'degraded' | 'down';
+  api_status?: string;
+  uptime_seconds?: number;
+  version?: string;
+  model_status?: { oral?: boolean; skin?: boolean };
+  firebase_status?: boolean;
+  services?: {
+    api?: ServiceStatus;
+    gemini?: ServiceStatus;
+    tflite?: ServiceStatus;
     firebase?: ServiceStatus;
   };
   timestamp?: string;
