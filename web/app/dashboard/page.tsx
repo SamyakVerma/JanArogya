@@ -66,10 +66,10 @@ export default function DashboardPage() {
                 <div className="space-y-6">
                   {/* KPI Cards */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <KPICard title="Total Scans" value={stats.total_scans} icon={TrendingUp} trend="+12%" trendUp />
-                    <KPICard title="High Risk" value={stats.high_risk_count} icon={AlertTriangle} accent="danger" />
-                    <KPICard title="Avg Confidence" value={`${(stats.average_confidence * 100).toFixed(1)}%`} icon={BarChart2} accent="success" />
-                    <KPICard title="Reports" value={stats.total_scans} icon={FileText} trend="+8%" trendUp />
+                    <KPICard title="Total Scans" value={stats.total_scans} icon={<TrendingUp className="h-5 w-5" />} trendLabel="+12%" trend="up" />
+                    <KPICard title="High Risk" value={stats.high_risk_count} icon={<AlertTriangle className="h-5 w-5" />} color="red" />
+                    <KPICard title="Avg Confidence" value={`${(stats.average_confidence * 100).toFixed(1)}%`} icon={<BarChart2 className="h-5 w-5" />} color="green" />
+                    <KPICard title="Reports" value={stats.total_scans} icon={<FileText className="h-5 w-5" />} trendLabel="+8%" trend="up" />
                   </div>
 
                   {/* Charts row 1 */}
