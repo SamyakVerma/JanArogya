@@ -138,7 +138,7 @@ export default function ScanPage() {
                 </div>
               </div>
             )}
-            {loading && <AnalysisProgress steps={steps} currentStep={step} />}
+            {loading && <AnalysisProgress />}
             {result && <ResultCard result={result} language={language} scanType={scanType} />}
           </div>
         </div>
