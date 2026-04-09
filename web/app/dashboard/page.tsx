@@ -88,20 +88,11 @@ export default function DashboardPage() {
                   <div className="grid lg:grid-cols-2 gap-4">
                     <div className="bg-background-card rounded-2xl border border-border p-5">
                       <h3 className="text-sm font-semibold text-white mb-4">By Scan Type</h3>
-                      <BarChart data={[
-                        { name: 'Oral', value: stats.scans_by_type.oral },
-                        { name: 'Skin', value: stats.scans_by_type.skin },
-                        { name: 'Other', value: stats.scans_by_type.other },
-                      ]} color="#3B82F6" />
+                      <BarChart stats={stats} type="scan_type" />
                     </div>
                     <div className="bg-background-card rounded-2xl border border-border p-5">
                       <h3 className="text-sm font-semibold text-white mb-4">By Language</h3>
-                      <BarChart data={[
-                        { name: 'English', value: stats.scans_by_language.en },
-                        { name: 'Hindi', value: stats.scans_by_language.hi },
-                        { name: 'Tamil', value: stats.scans_by_language.ta },
-                        { name: 'Telugu', value: stats.scans_by_language.te },
-                      ]} color="#10B981" />
+                      <BarChart stats={stats} type="language" />
                     </div>
                   </div>
 
