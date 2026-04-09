@@ -124,20 +124,65 @@ def me(user: dict = Depends(get_current_user)):
     }
 
 
+@router.post("/firebase")
+def firebase_auth(req: GoogleAuthRequest):
+    """
+    Verify a Firebase ID token and return a JanArogya JWT.
+    Works for Google, GitHub, Email/Password — any Firebase provider.
+    """
+    import os
+    import firebase_admin
+    from firebase_admin import auth as fb_auth, credentials as fb_creds
+
+    # Initialise Firebase Admin SDK once
+    if not firebase_admin._apps:
+        sa_path = os.path.join(
+            os.path.dirname(__file__), "..", "config", "firebase-service-account.json"
+        )
+        try:
+            cred = fb_creds.Certificate(sa_path)
+            firebase_admin.initialize_app(cred)
+        except Exception as exc:
+            logger.error("Firebase Admin init failed: %s", exc)
+            raise HTTPException(500, "Firebase not configured on server")
+
+    # Verify the token
+    try:
+        decoded = fb_auth.verify_id_token(req.id_token)
+    except Exception as exc:
+        logger.warning("Firebase token invalid: %s", exc)
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
+
+    uid   = decoded.get("uid", "")
+    email = decoded.get("email") or f"{uid}@firebase.janarogya.health"
+    name  = decoded.get("name") or decoded.get("email", "User").split("@")[0].title()
+
+    # Create or log in the user
+    stable_password = f"fb_{uid}_secure"
+    try:
+        result = register_user(email, stable_password, name, "patient")
+    except ValueError:
+        # User already exists — log in
+        try:
+            result = login_user(email, stable_password)
+        except ValueError:
+            raise HTTPException(400, "Account exists with a different sign-in method")
+
+    logger.info("Firebase auth: user %s (%s)", email, decoded.get("firebase", {}).get("sign_in_provider", "unknown"))
+    return {
+        "user_id": result["user_id"],
+        "token": result["token"],
+        "refresh_token": result.get("refresh_token", ""),
+        "user_profile": {
+            "user_id": result["user_id"],
+            "email": email,
+            "name": name,
+            "role": "patient",
+        },
+    }
+
+
 @router.post("/google")
 def google_auth(req: GoogleAuthRequest):
-    """Mock Google OAuth — generates a user from the id_token claim."""
-    # In production this would verify the Google token.
-    # For now, extract or generate an email from the token string.
-    fake_uid = str(uuid.uuid4())[:8]
-    fake_email = f"google_{fake_uid}@janarogya.health"
-    fake_name = "Google User"
-
-    try:
-        result = register_user(fake_email, fake_uid + "password", fake_name, "patient")
-    except ValueError:
-        # Already exists (won't happen with UUID but guard anyway)
-        result = login_user(fake_email, fake_uid + "password")
-
-    logger.info("Google auth mock: created user %s", fake_email)
-    return {"user_id": result["user_id"], "token": result["token"]}
+    """Legacy alias — forwards to /firebase."""
+    return firebase_auth(req)
