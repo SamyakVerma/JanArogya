@@ -20,7 +20,6 @@ export default function ScanPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState(0);
   const [showQuestions, setShowQuestions] = useState(false);
   const [symptoms, setSymptoms] = useState({ q1: '', q2: '', q3: '' });
 
