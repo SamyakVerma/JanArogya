@@ -99,7 +99,7 @@ export default function DashboardPage() {
                   {/* Recent scans table */}
                   <div className="bg-background-card rounded-2xl border border-border p-5">
                     <h3 className="text-sm font-semibold text-white mb-4">Recent Scans</h3>
-                    {scansLoading ? <Spinner /> : <ScansTable scans={scansData?.scans ?? []} />}
+                    {scansLoading ? <Spinner /> : <ScansTable scans={scansData?.scans ?? []} total={scansData?.total ?? 0} page={1} onPageChange={() => {}} onRefresh={() => qc.invalidateQueries({ queryKey: ['recent-scans'] })} />}
                   </div>
                 </div>
               )}
